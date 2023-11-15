@@ -10,41 +10,68 @@ import (
 	"go_diffie_hellman_chat/internal/config"
 	"go_diffie_hellman_chat/internal/models"
 	"go_diffie_hellman_chat/internal/services"
+	"time"
 )
 
 // ShowMessageListScreen ...
 func ShowMessageListScreen(c *config.Config, window fyne.Window, account *models.Account) {
 	welcomeMessage := "Welcome, " + account.Name + "!"
+
 	welcomeLabel := widget.NewLabel(welcomeMessage)
 
-	box := container.NewVBox(welcomeLabel)
+	copyPublicKey := widget.NewButton("Copy PublicKey", func() {
+		window.Clipboard().SetContent(account.PublicKey)
+	})
 
-	messages := services.GetMessagesByPublicId(c, account.PublicKey)
-
+	box := container.NewVBox()
+	box.Add(welcomeLabel)
+	box.Add(copyPublicKey)
 	box.Add(widget.NewButton("New message", func() {
 		ShowCreateMessageScreen(c, window, account)
 	}))
 
-	for _, m := range messages {
-		var chatName string
-		var companion string
+	messageBox := container.NewVBox()
 
-		if m.From == account.PublicKey {
-			companion = m.To
-			chatName = fmt.Sprintf("%d. Me => %s", m.Id, companion)
-		} else {
-			companion = m.From
-			chatName = fmt.Sprintf("%d. %s => Me", m.Id, companion)
+	refreshMessages := func() {
+		messages := services.GetMessagesByPublicId(c, account.PublicKey)
+
+		for _, m := range messages {
+			var chatName string
+			var companion string
+
+			if m.From == account.PublicKey {
+				companion = m.To
+				chatName = fmt.Sprintf("%d. Me => %s", m.Id, companion)
+			} else {
+				companion = m.From
+				chatName = fmt.Sprintf("%d. %s => Me", m.Id, companion)
+			}
+
+			currentMessage := m
+
+			messageBox.Add(widget.NewButton(chatName, func() {
+				ShowMessage(c, window, account, companion, currentMessage)
+			}))
 		}
-
-		currentMessage := m
-
-		box.Add(widget.NewButton(chatName, func() {
-			ShowMessage(c, window, account, companion, currentMessage)
-		}))
 	}
 
-	window.SetContent(box)
+	ticker := time.NewTicker(10 * time.Second)
+
+	go func() {
+		for range ticker.C {
+			messageBox.RemoveAll()
+
+			refreshMessages()
+
+			window.Content().Refresh()
+		}
+	}()
+
+	refreshMessages()
+
+	bodyBox := container.NewVBox(box, messageBox)
+
+	window.SetContent(bodyBox)
 }
 
 func ShowCreateMessageScreen(c *config.Config, window fyne.Window, account *models.Account) {

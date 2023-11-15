@@ -9,8 +9,8 @@ import (
 	"go_diffie_hellman_chat/internal/models"
 )
 
-// NewAccountForm ...
-func NewAccountForm(c *config.Config, window fyne.Window, createFunc func(name string, privateKey *string) (*models.Account, error)) fyne.CanvasObject {
+// NewAccountScreen ...
+func NewAccountScreen(c *config.Config, window fyne.Window, createFunc func(name string, privateKey *string) (*models.Account, error)) {
 	nameEntry := widget.NewEntry()
 	privateKeyEntry := widget.NewEntry()
 	privateKeyEntry.SetPlaceHolder("Optional")
@@ -35,7 +35,7 @@ func NewAccountForm(c *config.Config, window fyne.Window, createFunc func(name s
 		createButton,
 	)
 
-	return form
+	window.SetContent(form)
 }
 
 // ShowAccountScreen ...
@@ -46,7 +46,7 @@ func ShowAccountScreen(
 	createFunc func(name string, privateKey *string) (*models.Account, error),
 ) {
 	if account == nil {
-		window.SetContent(NewAccountForm(c, window, createFunc))
+		NewAccountScreen(c, window, createFunc)
 	} else {
 		ShowMessageListScreen(c, window, account)
 	}
