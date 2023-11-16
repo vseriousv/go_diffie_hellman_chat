@@ -14,7 +14,7 @@ func main() {
 	c := config.DefaultConfig()
 	application := app.New()
 	window := application.NewWindow("DiffHell")
-	window.Resize(fyne.NewSize(700, 700))
+	window.Resize(fyne.NewSize(400, 500))
 
 	account, err := storage.LoadAccount("./account.json")
 	if err != nil {

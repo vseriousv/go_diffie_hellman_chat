@@ -6,10 +6,12 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 	"go_diffie_hellman_chat/internal/config"
 	"go_diffie_hellman_chat/internal/models"
 	"go_diffie_hellman_chat/internal/services"
+	"go_diffie_hellman_chat/internal/utils"
 	"time"
 )
 
@@ -19,16 +21,17 @@ func ShowMessageListScreen(c *config.Config, window fyne.Window, account *models
 
 	welcomeLabel := widget.NewLabel(welcomeMessage)
 
-	copyPublicKey := widget.NewButton("Copy PublicKey", func() {
+	copyPublicKeyButton := widget.NewButton("Copy PublicKey", func() {
 		window.Clipboard().SetContent(account.PublicKey)
+	})
+
+	newMessageButton := widget.NewButton("New message", func() {
+		ShowCreateMessageScreen(c, window, account)
 	})
 
 	box := container.NewVBox()
 	box.Add(welcomeLabel)
-	box.Add(copyPublicKey)
-	box.Add(widget.NewButton("New message", func() {
-		ShowCreateMessageScreen(c, window, account)
-	}))
+	box.Add(container.NewPadded(container.New(layout.NewGridLayout(2), copyPublicKeyButton, newMessageButton)))
 
 	messageBox := container.NewVBox()
 
@@ -39,12 +42,25 @@ func ShowMessageListScreen(c *config.Config, window fyne.Window, account *models
 			var chatName string
 			var companion string
 
+			messageData := m.CreatedAt.Format("2006-01-02")
+			messageTime := m.CreatedAt.Format("15:04")
+
 			if m.From == account.PublicKey {
 				companion = m.To
-				chatName = fmt.Sprintf("%d. Me => %s", m.Id, companion)
+				address, err := services.GetAddressFromPublicKey(m.To)
+				if err != nil {
+					dialog.ShowError(err, window)
+					return
+				}
+				chatName = fmt.Sprintf("%s %s \t Me => %s", messageData, messageTime, utils.AddressShort(address))
 			} else {
 				companion = m.From
-				chatName = fmt.Sprintf("%d. %s => Me", m.Id, companion)
+				address, err := services.GetAddressFromPublicKey(m.From)
+				if err != nil {
+					dialog.ShowError(err, window)
+					return
+				}
+				chatName = fmt.Sprintf("%s %s \t %s => Me", messageData, messageTime, utils.AddressShort(address))
 			}
 
 			currentMessage := m
@@ -69,7 +85,10 @@ func ShowMessageListScreen(c *config.Config, window fyne.Window, account *models
 
 	refreshMessages()
 
-	bodyBox := container.NewVBox(box, messageBox)
+	bodyBox := container.NewVBox(
+		box,
+		container.NewPadded(messageBox),
+	)
 
 	window.SetContent(bodyBox)
 }
@@ -104,11 +123,14 @@ func ShowCreateMessageScreen(c *config.Config, window fyne.Window, account *mode
 		ShowMessageListScreen(c, window, account)
 	})
 
+	buttonBox := container.New(layout.NewGridLayout(2), backButton, sendButton)
+
 	content := container.NewVBox(
+		widget.NewLabel("To publicKey:"),
 		toEntry,
+		widget.NewLabel("Message:"),
 		messageEntry,
-		sendButton,
-		backButton,
+		buttonBox,
 	)
 
 	window.SetContent(content)
@@ -121,7 +143,13 @@ func ShowMessage(c *config.Config, window fyne.Window, account *models.Account, 
 		dialog.ShowError(err, window)
 	}
 
-	companionLabel := widget.NewLabel(fmt.Sprintf("Chat with: %s", companion))
+	address, err := services.GetAddressFromPublicKey(companion)
+	if err != nil {
+		dialog.ShowError(err, window)
+		return
+	}
+
+	companionLabel := widget.NewLabel(fmt.Sprintf("Chat with: %s", address))
 
 	messageTitleLabel := widget.NewLabel("Message:")
 
