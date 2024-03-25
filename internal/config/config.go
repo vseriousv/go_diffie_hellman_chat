@@ -13,7 +13,7 @@ func DefaultConfig() *Config {
 	var c Config
 
 	c.GoEnv = "development"
-	c.ApiUrl = "https://dh-chat.swapline.io"
+	c.ApiUrl = "http://127.0.0.1:4000"
 
 	return &c
 }
